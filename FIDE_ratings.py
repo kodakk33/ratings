@@ -8,7 +8,7 @@ import logging
 
 app = Flask(__name__)
 
-# Set up logging for better error handling
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 
 CACHE_FILE = 'fide_ratings_cache.json'  # Define the cache file name
@@ -19,15 +19,19 @@ def get_cached_ratings():
     Returns:
         list: Cached ratings data if it exists, None otherwise.
     """
-    if os.path.exists(CACHE_FILE):
+    if os.path.exists(CACHE_FILE):  # Check if the cache file exists
         try:
-            with open(CACHE_FILE, 'r') as f:
-                data = json.load(f)
-                logging.info("Cache found and loaded.")
-                return data
+            with open(CACHE_FILE, 'r') as f:  # Open the cache file for reading
+                return json.load(f)  # Load and return the JSON data from the file
         except json.JSONDecodeError:
-            logging.error("Cache file is corrupted or empty.")
-    return None  # Return None if no cache file exists or it's corrupted
+            logging.error(f"Cache file {CACHE_FILE} is corrupted or empty. Re-fetching data.")
+            return None  # Return None to trigger a data fetch
+        except IOError as e:
+            logging.error(f"Failed to read cache file {CACHE_FILE}: {e}")
+            return None
+    else:
+        logging.info(f"No cache file found. A new one will be created.")
+        return None  # No cache found
 
 def cache_ratings(ratings):
     """
@@ -35,9 +39,12 @@ def cache_ratings(ratings):
     Args:
         ratings (list): List of ratings data to cache.
     """
-    with open(CACHE_FILE, 'w') as f:
-        json.dump(ratings, f)
-    logging.info("Ratings cached successfully.")
+    try:
+        with open(CACHE_FILE, 'w') as f:  # Open the cache file for writing
+            json.dump(ratings, f)  # Convert the ratings list to JSON and write it to the file
+        logging.info(f"Cache written successfully to {CACHE_FILE}")
+    except IOError as e:
+        logging.error(f"Failed to write cache to {CACHE_FILE}: {e}")
 
 def fetch_fide_ratings(fide_ids):
     """
@@ -47,22 +54,17 @@ def fetch_fide_ratings(fide_ids):
     Returns:
         list: List of ratings data.
     """
-    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]
-    cache_ratings(ratings)
-    return ratings
+    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]  # Get ratings for each FIDE ID
+    cache_ratings(ratings)  # Cache the fetched ratings
+    return ratings  # Return the fetched ratings
 
+# Function to fetch player ratings from FIDE website
 def get_fide_rating(fide_id):
-    """
-    Fetch the FIDE rating for a specific player by ID.
-    Args:
-        fide_id (str): The FIDE ID of the player.
-    Returns:
-        dict: Player's ratings.
-    """
     url = f"https://ratings.fide.com/profile/{fide_id}"
     try:
         response = requests.get(url)
         response.raise_for_status()
+
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # Extract player name
@@ -77,7 +79,7 @@ def get_fide_rating(fide_id):
             rating_entries = ratings_section.find_all('div', class_='profile-top-rating-data')
             for entry in rating_entries:
                 rating_type = entry.find('span', class_='profile-top-rating-dataDesc').text.strip()
-                rating_text = entry.text.strip().split()[-1]
+                rating_text = entry.text.strip().split()[-1]  # Get the last part (the number)
 
                 try:
                     rating_value = int(rating_text)
@@ -91,7 +93,6 @@ def get_fide_rating(fide_id):
                 elif rating_type == "blitz":
                     blitz_rating = rating_value
 
-        logging.info(f"Fetched rating for FIDE ID {fide_id}: {name}, Std: {standard_rating}, Rapid: {rapid_rating}, Blitz: {blitz_rating}")
         return {"name": name, "fide_id": fide_id, "standard": standard_rating, "rapid": rapid_rating, "blitz": blitz_rating}
 
     except requests.exceptions.HTTPError as http_err:
@@ -101,18 +102,12 @@ def get_fide_rating(fide_id):
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}
 
+# Function to read FIDE IDs from file
 def read_fide_ids_from_file(file_path):
-    """
-    Read FIDE IDs from the specified file.
-    Args:
-        file_path (str): Path to the file containing FIDE IDs.
-    Returns:
-        list: List of FIDE IDs.
-    """
     try:
         with open(file_path, 'r') as file:
             content = file.read().strip()
-            fide_ids = content.split()  # Splitting by spaces, newlines, or tabs
+            fide_ids = content.split()  # Split by spaces, newlines, or tabs to ensure all IDs are captured
             logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
             return fide_ids
     except FileNotFoundError:
@@ -122,17 +117,16 @@ def read_fide_ids_from_file(file_path):
         logging.error(f"An error occurred while reading the file: {err}")
         return []
 
+# Flask route to display the ratings
 @app.route('/')
 def show_ratings():
-    file_path = 'ratings.txt'
-    fide_ids = read_fide_ids_from_file(file_path)
+    file_path = 'ratings.txt'  # Path to the file with FIDE IDs
+    fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
 
     # Try to get ratings from the cache first
     players = get_cached_ratings()  # Attempt to retrieve cached ratings
-    if players is None:
-        players = fetch_fide_ratings(fide_ids)  # Fetch new ratings and cache them
-
-    logging.info(f"Fetched Players Data: {players}")  # Log the fetched players data
+    if players is None:  # If no cached ratings are found, fetch new ratings and cache them
+        players = fetch_fide_ratings(fide_ids)
 
     # Sort players by Standard rating
     sorted_players = sorted(players, key=lambda x: x['standard'], reverse=True)
@@ -143,9 +137,6 @@ def show_ratings():
         headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
         tablefmt="html"
     )
-
-    # Log the table content to debug
-    logging.info(f"Generated Table: {table}")
 
     # Create the full HTML page
     html_content = f"""
@@ -165,8 +156,9 @@ def show_ratings():
     </body>
     </html>
     """
-
+    
+    logging.info(f"Generated Table: {table}")
     return render_template_string(html_content)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))  # Set debug
