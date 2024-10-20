@@ -69,20 +69,31 @@ def get_fide_rating(fide_id):
 @app.route('/')
 def show_ratings():
     """Flask route to display the ratings."""
-    fide_ids = ['1940376', '1984349', '1984357']  # Temporary FIDE IDs for testing
-    players = [get_fide_rating(fide_id) for fide_id in fide_ids]
+    file_path = 'ratings.txt'
+    fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
+
+    logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
+
+    players = get_cached_ratings()  # Attempt to retrieve cached ratings
+    if players is None:  # If no cached ratings are found
+        players = fetch_fide_ratings(fide_ids)  # Fetch new ratings and cache them
 
     # Check if players data was fetched
-    if not players or all(player.get('standard') == "Unrated" for player in players):
+    if not players or all(player.get('standard') == 0 for player in players):
         logging.warning("No player data found or fetched.")
         return "<p>No player data available.</p>"
 
-    # Create HTML table
-    table_rows = "".join(
-        f"<tr><td>{player['name']}</td><td>{player['fide_id']}</td><td>{player['standard']}</td><td>{player['rapid']}</td><td>{player['blitz']}</td></tr>"
-        for player in players
+    # Sort players by Standard rating
+    sorted_players = sorted(players, key=lambda x: (x['standard'] == 0, x['standard']), reverse=True)
+
+    # Create HTML table with Tabulate
+    table = tabulate(
+        [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in sorted_players],
+        headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
+        tablefmt="html"
     )
 
+    # Create the full HTML page
     html_content = f"""
     <html>
     <head>
@@ -96,21 +107,13 @@ def show_ratings():
     </head>
     <body>
         <h1>FIDE Ratings</h1>
-        <table>
-            <tr>
-                <th>Player</th>
-                <th>FIDE ID</th>
-                <th>Standard</th>
-                <th>Rapid</th>
-                <th>Blitz</th>
-            </tr>
-            {table_rows}
-        </table>
+        {table}
     </body>
     </html>
     """
-
+    
     return render_template_string(html_content)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)  # Use a fixed port for testing
