@@ -111,4 +111,4 @@ def show_ratings():
     return render_template_string(html_content)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)  # Set debug to False in production
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))  # Set debug to False in production
