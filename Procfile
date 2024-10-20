@@ -1,1 +1,1 @@
-web: waitress-serve --port=$PORT FIDE_ratings:app
+web: waitress-serve --port=$PORT --threads=4 FIDE_ratings:app

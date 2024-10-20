@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 def get_fide_rating(fide_id):
     url = f"https://ratings.fide.com/profile/{fide_id}"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -71,7 +71,7 @@ def read_fide_ids_from_file(file_path):
 # Flask route to display the ratings
 @app.route('/')
 def show_ratings():
-    file_path = "C:\\Users\\rmcra\\OneDrive\\Ambiente de Trabalho\\ratings.txt"
+    file_path = "ratings.txt"
     fide_ids = read_fide_ids_from_file(file_path)
 
     if not fide_ids:
