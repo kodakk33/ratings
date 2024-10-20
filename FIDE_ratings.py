@@ -124,31 +124,29 @@ def read_fide_ids_from_file(file_path):
 
 @app.route('/')
 def show_ratings():
-    # Replace with your actual file path
     file_path = 'ratings.txt'
-    
-    fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
-    print(f"FIDE IDs loaded: {fide_ids}")  # Debugging check
-    
+    fide_ids = read_fide_ids_from_file(file_path)
+
     # Try to get ratings from the cache first
-    players = get_cached_ratings()
+    players = get_cached_ratings()  # Attempt to retrieve cached ratings
     if players is None:
-        logging.info("No cache found or cache is invalid, fetching new data.")
-        players = fetch_fide_ratings(fide_ids)  # Fetch new ratings if no cache
-    
-    print(f"Players Data: {players}")  # Debugging check
-    
+        players = fetch_fide_ratings(fide_ids)  # Fetch new ratings and cache them
+
+    logging.info(f"Fetched Players Data: {players}")  # Log the fetched players data
+
     # Sort players by Standard rating
     sorted_players = sorted(players, key=lambda x: x['standard'], reverse=True)
-    
+
     # Create HTML table with Tabulate
     table = tabulate(
         [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in sorted_players],
         headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
         tablefmt="html"
     )
-    print(f"Generated Table: {table}")  # Debugging check
-    
+
+    # Log the table content to debug
+    logging.info(f"Generated Table: {table}")
+
     # Create the full HTML page
     html_content = f"""
     <html>
@@ -167,7 +165,7 @@ def show_ratings():
     </body>
     </html>
     """
-    
+
     return render_template_string(html_content)
 
 if __name__ == "__main__":
