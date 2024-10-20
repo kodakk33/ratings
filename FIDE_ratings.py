@@ -107,7 +107,7 @@ def read_fide_ids_from_file(file_path):
 @app.route('/')
 def show_ratings():
     # Replace with your actual file path
-    file_path = 'C:\\Users\\rmcra\\OneDrive\\Ambiente de Trabalho\\ratings.txt'
+    file_path = 'ratings.txt'
     fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
 
     # Try to get ratings from the cache first
