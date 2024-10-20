@@ -45,12 +45,17 @@ def get_fide_rating(fide_id):
     logging.info(f"Fetching data for FIDE ID: {fide_id} from URL: {url}")
     try:
         response = requests.get(url)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, 'html.parser')
+        response.raise_for_status()  # This will raise an error for HTTP errors (4xx and 5xx)
 
         # Log response status
         logging.info(f"Received response from FIDE for {fide_id}: {response.status_code}")
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Check if the response contains the expected data structure
+        if not soup.find('div', class_='profile-top-title'):
+            logging.warning(f"Player not found for FIDE ID: {fide_id}")
+            return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": "Unrated", "rapid": "Unrated", "blitz": "Unrated"}
 
         # Extract player name
         name_tag = soup.find('div', class_='profile-top-title')
@@ -68,6 +73,8 @@ def get_fide_rating(fide_id):
 
                 try:
                     rating_value = int(rating_text)
+                    if rating_value < 0:  # FIDE ratings can't be negative
+                        rating_value = "Unrated"
                 except ValueError:
                     rating_value = "Unrated"  # Set to "Unrated" if it's not a valid number
 
@@ -83,8 +90,10 @@ def get_fide_rating(fide_id):
 
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred for ID {fide_id}: {http_err}")
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"Request exception occurred for ID {fide_id}: {req_err}")
     except Exception as err:
-        logging.error(f"An error occurred for ID {fide_id}: {err}")
+        logging.error(f"An unexpected error occurred for ID {fide_id}: {err}")
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": "Unrated", "rapid": "Unrated", "blitz": "Unrated"}
 
