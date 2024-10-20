@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 def get_fide_rating(fide_id):
     url = f"https://ratings.fide.com/profile/{fide_id}"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
