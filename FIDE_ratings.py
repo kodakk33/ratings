@@ -103,13 +103,17 @@ def show_ratings():
     file_path = 'ratings.txt'
     fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
 
+    # Log the loaded FIDE IDs
+    logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
+
     # Try to get ratings from the cache first
     players = get_cached_ratings()  # Attempt to retrieve cached ratings
     if players is None:  # If no cached ratings are found
         players = fetch_fide_ratings(fide_ids)  # Fetch new ratings and cache them
 
     # Check if players data was fetched
-    if not players:
+    if not players or all(player.get('standard') == "Unrated" for player in players):
+        logging.warning("No player data found or fetched.")
         return "<p>No player data available.</p>"
 
     # Sort players by Standard rating
