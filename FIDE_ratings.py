@@ -26,7 +26,8 @@ def get_fide_rating(fide_id):
 
         # Extract FIDE ratings
         ratings_section = soup.find('div', class_='profile-top-rating-dataCont')
-        standard_rating, rapid_rating, blitz_rating = "Unrated", "Unrated", "Unrated"
+        logging.info(f"Ratings section found for {fide_id}: {ratings_section}")  # Debugging line
+        standard_rating, rapid_rating, blitz_rating = 0, 0, 0  # Change Unrated to 0
 
         if ratings_section:
             rating_entries = ratings_section.find_all('div', class_='profile-top-rating-data')
@@ -34,16 +35,20 @@ def get_fide_rating(fide_id):
                 rating_type = entry.find('span', class_='profile-top-rating-dataDesc').text.strip()
                 rating_text = entry.text.strip().split()[-1]  # Get the last part (the number)
 
-                if "Unrated" in rating_text:
-                    rating_value = "Unrated"
+                # Debugging line to see what is being processed
+                logging.info(f"Processing {rating_type} rating for {fide_id}: {rating_text}")
+
+                if "Unrated" in rating_text:  # Check for the 'Unrated' label
+                    rating_value = 0  # Set unrated players' ratings to 0
                 else:
                     try:
                         rating_value = int(rating_text)
-                        if rating_value < 0:
-                            rating_value = "Unrated"
+                        if rating_value < 0:  # FIDE ratings can't be negative
+                            rating_value = 0  # Set negative ratings to 0
                     except ValueError:
-                        rating_value = "Unrated"
+                        rating_value = 0  # Set to 0 if it's not a valid number
 
+                # Assign ratings based on the type
                 if rating_type == "std":
                     standard_rating = rating_value
                 elif rating_type == "rapid":
@@ -59,7 +64,7 @@ def get_fide_rating(fide_id):
     except Exception as err:
         logging.error(f"An unexpected error occurred for ID {fide_id}: {err}")
 
-    return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": "Unrated", "rapid": "Unrated", "blitz": "Unrated"}
+    return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}  # Return 0 for unrated
 
 @app.route('/')
 def show_ratings():
