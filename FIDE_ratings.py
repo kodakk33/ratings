@@ -71,7 +71,7 @@ def read_fide_ids_from_file(file_path):
 # Flask route to display the ratings
 @app.route('/')
 def show_ratings():
-    file_path = "C:\\Users\\rmcra\\OneDrive\\Ambiente de Trabalho\\ratings.txt"
+    file_path = "ratings.txt"
     fide_ids = read_fide_ids_from_file(file_path)
 
     if not fide_ids:
