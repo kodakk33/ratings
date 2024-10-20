@@ -40,6 +40,9 @@ def get_fide_rating(fide_id):
         response.raise_for_status()  # Raise an error for HTTP errors
         logging.info(f"Received response for {fide_id}: {response.status_code}")
 
+        # Log the response text for debugging
+        logging.debug(f"Response content for {fide_id}: {response.text}")
+
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # Extract player name
