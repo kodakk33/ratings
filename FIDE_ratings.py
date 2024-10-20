@@ -56,7 +56,8 @@ def get_fide_rating(fide_id):
                 rating_type = entry.find('span', class_='profile-top-rating-dataDesc').text.strip()
                 rating_text = entry.text.strip().split()[-1]  # Get the last part (the number)
 
-                if rating_text == "Unrated":  # Check for the 'Unrated' label
+                # If it says "Unrated", we handle it properly
+                if "Unrated" in rating_text:
                     rating_value = "Unrated"
                 else:
                     try:
