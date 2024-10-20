@@ -9,39 +9,37 @@ import logging
 app = Flask(__name__)
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 CACHE_FILE = 'fide_ratings_cache.json'  # Define the cache file name
 
 def get_cached_ratings():
     """Check if the cache file exists and read the ratings from it."""
-    if os.path.exists(CACHE_FILE):  # Check if the cache file exists
-        with open(CACHE_FILE, 'r') as f:  # Open the cache file for reading
-            return json.load(f)  # Load and return the JSON data from the file
-    return None  # Return None if the cache file does not exist
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, 'r') as f:
+            return json.load(f)
+    return None
 
 def cache_ratings(ratings):
     """Write the ratings data to the cache file."""
-    with open(CACHE_FILE, 'w') as f:  # Open the cache file for writing
-        json.dump(ratings, f)  # Convert the ratings list to JSON and write it to the file
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(ratings, f)
 
 def fetch_fide_ratings(fide_ids):
     """Fetch FIDE ratings for a list of FIDE IDs and cache the results."""
-    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]  # Get ratings for each FIDE ID
-    cache_ratings(ratings)  # Cache the fetched ratings
-    return ratings  # Return the fetched ratings
+    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]
+    cache_ratings(ratings)
+    return ratings
 
 def get_fide_rating(fide_id):
     """Fetch player ratings from the FIDE website."""
     url = f"https://ratings.fide.com/profile/{fide_id}"
     logging.info(f"Fetching data for FIDE ID: {fide_id} from URL: {url}")
+    
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for HTTP errors
         logging.info(f"Received response for {fide_id}: {response.status_code}")
-
-        # Log the response text for debugging
-        logging.debug(f"Response content for {fide_id}: {response.text}")
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -59,18 +57,16 @@ def get_fide_rating(fide_id):
                 rating_type = entry.find('span', class_='profile-top-rating-dataDesc').text.strip()
                 rating_text = entry.text.strip().split()[-1]  # Get the last part (the number)
 
-                # If it says "Unrated", we handle it properly
                 if "Unrated" in rating_text:
                     rating_value = "Unrated"
                 else:
                     try:
-                        rating_value = int(rating_text)  # Convert to integer
-                        if rating_value < 0:  # FIDE ratings can't be negative
+                        rating_value = int(rating_text)
+                        if rating_value < 0:
                             rating_value = "Unrated"
                     except ValueError:
-                        rating_value = "Unrated"  # Set to "Unrated" if it's not a valid number
+                        rating_value = "Unrated"
 
-                # Assign ratings based on the type
                 if rating_type == "std":
                     standard_rating = rating_value
                 elif rating_type == "rapid":
@@ -82,7 +78,8 @@ def get_fide_rating(fide_id):
         return {"name": name, "fide_id": fide_id, "standard": standard_rating, "rapid": rapid_rating, "blitz": blitz_rating}
 
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred for ID {fide_id}: {http_err}")
+        logging.error(f"HTTP error occurred for ID {fide_id}: {http_err} - Status Code: {http_err.response.status_code}")
+        logging.debug(f"Response content: {http_err.response.text}")  # Log the content for debugging
     except Exception as err:
         logging.error(f"An unexpected error occurred for ID {fide_id}: {err}")
 
@@ -93,7 +90,7 @@ def read_fide_ids_from_file(file_path):
     try:
         with open(file_path, 'r') as file:
             content = file.read().strip()
-            fide_ids = content.split()  # Split by spaces, newlines, or tabs to ensure all IDs are captured
+            fide_ids = content.split()
             return fide_ids
     except FileNotFoundError:
         logging.error(f"The file {file_path} was not found.")
@@ -106,15 +103,14 @@ def read_fide_ids_from_file(file_path):
 def show_ratings():
     """Flask route to display the ratings."""
     file_path = 'ratings.txt'
-    fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
+    fide_ids = read_fide_ids_from_file(file_path)
 
-    # Log the loaded FIDE IDs
     logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
 
     # Try to get ratings from the cache first
-    players = get_cached_ratings()  # Attempt to retrieve cached ratings
-    if players is None:  # If no cached ratings are found
-        players = fetch_fide_ratings(fide_ids)  # Fetch new ratings and cache them
+    players = get_cached_ratings()
+    if players is None:
+        players = fetch_fide_ratings(fide_ids)
 
     # Check if players data was fetched
     if not players or all(player.get('standard') == "Unrated" for player in players):
@@ -153,4 +149,4 @@ def show_ratings():
     return render_template_string(html_content)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))  # Set debug
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
