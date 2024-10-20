@@ -9,7 +9,7 @@ import logging
 app = Flask(__name__)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 CACHE_FILE = 'fide_ratings_cache.json'  # Define the cache file name
 
