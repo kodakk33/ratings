@@ -2,8 +2,13 @@ from flask import Flask, render_template_string
 import requests
 from bs4 import BeautifulSoup
 from tabulate import tabulate
+import os
+import logging
 
 app = Flask(__name__)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 # Function to fetch player ratings from FIDE website
 def get_fide_rating(fide_id):
@@ -43,9 +48,9 @@ def get_fide_rating(fide_id):
         return {"name": name, "fide_id": fide_id, "standard": standard_rating, "rapid": rapid_rating, "blitz": blitz_rating}
 
     except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred for ID {fide_id}: {http_err}")
+        logging.error(f"HTTP error occurred for ID {fide_id}: {http_err}")
     except Exception as err:
-        print(f"An error occurred for ID {fide_id}: {err}")
+        logging.error(f"An error occurred for ID {fide_id}: {err}")
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}
 
@@ -57,18 +62,20 @@ def read_fide_ids_from_file(file_path):
             fide_ids = content.split()  # Split by spaces, newlines, or tabs to ensure all IDs are captured
             return fide_ids
     except FileNotFoundError:
-        print(f"The file {file_path} was not found.")
+        logging.error(f"The file {file_path} was not found.")
         return []
     except Exception as err:
-        print(f"An error occurred while reading the file: {err}")
+        logging.error(f"An error occurred while reading the file: {err}")
         return []
 
 # Flask route to display the ratings
 @app.route('/')
 def show_ratings():
-    # Replace with your actual file path
-    file_path = 'C:\\Users\\rmcra\\OneDrive\\Ambiente de Trabalho\\ratings.txt'
+    file_path = "C:\\Users\\rmcra\\OneDrive\\Ambiente de Trabalho\\ratings.txt"
     fide_ids = read_fide_ids_from_file(file_path)
+
+    if not fide_ids:
+        return "No FIDE IDs found. Please check your ratings.txt file."
 
     players = [get_fide_rating(fide_id) for fide_id in fide_ids]
 
@@ -82,8 +89,26 @@ def show_ratings():
         tablefmt="html"
     )
 
-    # Render the table to HTML using Flask
-    return render_template_string(f"<html><body>{table}</body></html>")
+    # Create the full HTML page
+    html_content = f"""
+    <html>
+    <head>
+        <title>FIDE Ratings</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; }}
+            table {{ border-collapse: collapse; width: 100%; }}
+            th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
+            th {{ background-color: #f2f2f2; }}
+        </style>
+    </head>
+    <body>
+        <h1>FIDE Ratings</h1>
+        {table}
+    </body>
+    </html>
+    """
+    
+    return render_template_string(html_content)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)  # Set debug to False in production
