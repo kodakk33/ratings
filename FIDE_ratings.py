@@ -58,7 +58,7 @@ def get_fide_rating(fide_id):
 
         # Extract FIDE ratings
         ratings_section = soup.find('div', class_='profile-top-rating-dataCont')
-        standard_rating, rapid_rating, blitz_rating = 0, 0, 0
+        standard_rating, rapid_rating, blitz_rating = "Unrated", "Unrated", "Unrated"
 
         if ratings_section:
             rating_entries = ratings_section.find_all('div', class_='profile-top-rating-data')
@@ -69,7 +69,7 @@ def get_fide_rating(fide_id):
                 try:
                     rating_value = int(rating_text)
                 except ValueError:
-                    rating_value = 0  # Default to 0 if it's not a valid number
+                    rating_value = "Unrated"  # Set to "Unrated" if it's not a valid number
 
                 if rating_type == "std":
                     standard_rating = rating_value
@@ -86,7 +86,7 @@ def get_fide_rating(fide_id):
     except Exception as err:
         logging.error(f"An error occurred for ID {fide_id}: {err}")
 
-    return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}
+    return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": "Unrated", "rapid": "Unrated", "blitz": "Unrated"}
 
 # Function to fetch FIDE ratings and cache results
 def fetch_fide_ratings(fide_ids):
@@ -120,8 +120,8 @@ def show_ratings():
     if players is None:
         players = fetch_fide_ratings(fide_ids)
 
-    # Sort players by Standard rating
-    sorted_players = sorted(players, key=lambda x: x['standard'], reverse=True)
+    # Sort players by Standard rating, placing "Unrated" at the bottom
+    sorted_players = sorted(players, key=lambda x: (x['standard'] == "Unrated", x['standard']), reverse=True)
 
     # Create HTML table with Tabulate
     table = tabulate(
