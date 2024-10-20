@@ -1,1 +1,1 @@
-web: gunicorn FIDE_ratings:app --bind 0.0.0.0:$PORT
+web: waitress-serve --port=$PORT FIDE_ratings:app
