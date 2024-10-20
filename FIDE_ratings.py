@@ -120,15 +120,23 @@ def show_ratings():
     if players is None:
         players = fetch_fide_ratings(fide_ids)
 
-    # Sort players by Standard rating, placing "Unrated" at the bottom
-    sorted_players = sorted(players, key=lambda x: (x['standard'] == "Unrated", x['standard']), reverse=True)
+    # Log the players data fetched
+    logging.info(f"Players Data: {players}")
 
-    # Create HTML table with Tabulate
-    table = tabulate(
-        [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in sorted_players],
-        headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
-        tablefmt="html"
-    )
+    # Fallback message if no players data is available
+    if not players:
+        logging.warning("No player data found or fetched.")
+        table = "<p>No player data available.</p>"
+    else:
+        # Sort players by Standard rating, placing "Unrated" at the bottom
+        sorted_players = sorted(players, key=lambda x: (x['standard'] == "Unrated", x['standard']), reverse=True)
+
+        # Create HTML table with Tabulate
+        table = tabulate(
+            [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in sorted_players],
+            headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
+            tablefmt="html"
+        )
 
     # Log generated table
     logging.info(f"Generated Table: {table}")
