@@ -38,6 +38,7 @@ def get_fide_rating(fide_id):
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for HTTP errors
+        logging.info(f"Received response for {fide_id}: {response.status_code}")
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
