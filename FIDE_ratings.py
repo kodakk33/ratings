@@ -2,11 +2,26 @@ from flask import Flask, render_template_string
 import requests
 from bs4 import BeautifulSoup
 import logging
+from tabulate import tabulate
 
 app = Flask(__name__)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
+
+def read_fide_ids_from_file(file_path):
+    """Read FIDE IDs from a text file."""
+    with open(file_path, 'r') as file:
+        return [line.strip() for line in file if line.strip()]
+
+def fetch_fide_ratings(fide_ids):
+    """Fetch ratings for multiple FIDE IDs."""
+    players = []
+    for fide_id in fide_ids:
+        player_data = get_fide_rating(fide_id)
+        if player_data:
+            players.append(player_data)
+    return players
 
 def get_fide_rating(fide_id):
     """Fetch player ratings from the FIDE website."""
@@ -27,7 +42,7 @@ def get_fide_rating(fide_id):
         # Extract FIDE ratings
         ratings_section = soup.find('div', class_='profile-top-rating-dataCont')
         logging.info(f"Ratings section found for {fide_id}: {ratings_section}")  # Debugging line
-        standard_rating, rapid_rating, blitz_rating = 0, 0, 0  # Change Unrated to 0
+        standard_rating, rapid_rating, blitz_rating = 0, 0, 0  # Set default values to 0
 
         if ratings_section:
             rating_entries = ratings_section.find_all('div', class_='profile-top-rating-data')
@@ -49,11 +64,11 @@ def get_fide_rating(fide_id):
                         rating_value = 0  # Set to 0 if it's not a valid number
 
                 # Assign ratings based on the type
-                if rating_type == "std":
+                if "Standard" in rating_type:
                     standard_rating = rating_value
-                elif rating_type == "rapid":
+                elif "Rapid" in rating_type:
                     rapid_rating = rating_value
-                elif rating_type == "blitz":
+                elif "Blitz" in rating_type:
                     blitz_rating = rating_value
 
         logging.info(f"Fetched ratings for {fide_id}: {name}, Std: {standard_rating}, Rapid: {rapid_rating}, Blitz: {blitz_rating}")
@@ -74,9 +89,7 @@ def show_ratings():
 
     logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
 
-    players = get_cached_ratings()  # Attempt to retrieve cached ratings
-    if players is None:  # If no cached ratings are found
-        players = fetch_fide_ratings(fide_ids)  # Fetch new ratings and cache them
+    players = fetch_fide_ratings(fide_ids)  # Fetch ratings directly
 
     # Check if players data was fetched
     if not players or all(player.get('standard') == 0 for player in players):
@@ -113,7 +126,6 @@ def show_ratings():
     """
     
     return render_template_string(html_content)
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)  # Use a fixed port for testing
