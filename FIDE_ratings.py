@@ -1,35 +1,12 @@
 from flask import Flask, render_template_string
 import requests
 from bs4 import BeautifulSoup
-from tabulate import tabulate
-import json
-import os
 import logging
 
 app = Flask(__name__)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
-
-CACHE_FILE = 'fide_ratings_cache.json'  # Define the cache file name
-
-def get_cached_ratings():
-    """Check if the cache file exists and read the ratings from it."""
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, 'r') as f:
-            return json.load(f)
-    return None
-
-def cache_ratings(ratings):
-    """Write the ratings data to the cache file."""
-    with open(CACHE_FILE, 'w') as f:
-        json.dump(ratings, f)
-
-def fetch_fide_ratings(fide_ids):
-    """Fetch FIDE ratings for a list of FIDE IDs and cache the results."""
-    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]
-    cache_ratings(ratings)
-    return ratings
 
 def get_fide_rating(fide_id):
     """Fetch player ratings from the FIDE website."""
@@ -78,56 +55,29 @@ def get_fide_rating(fide_id):
         return {"name": name, "fide_id": fide_id, "standard": standard_rating, "rapid": rapid_rating, "blitz": blitz_rating}
 
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred for ID {fide_id}: {http_err} - Status Code: {http_err.response.status_code}")
-        logging.debug(f"Response content: {http_err.response.text}")  # Log the content for debugging
+        logging.error(f"HTTP error occurred for ID {fide_id}: {http_err}")
     except Exception as err:
         logging.error(f"An unexpected error occurred for ID {fide_id}: {err}")
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": "Unrated", "rapid": "Unrated", "blitz": "Unrated"}
 
-def read_fide_ids_from_file(file_path):
-    """Read FIDE IDs from a file."""
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read().strip()
-            fide_ids = content.split()
-            return fide_ids
-    except FileNotFoundError:
-        logging.error(f"The file {file_path} was not found.")
-        return []
-    except Exception as err:
-        logging.error(f"An error occurred while reading the file: {err}")
-        return []
-
 @app.route('/')
 def show_ratings():
     """Flask route to display the ratings."""
-    file_path = 'ratings.txt'
-    fide_ids = read_fide_ids_from_file(file_path)
-
-    logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
-
-    # Try to get ratings from the cache first
-    players = get_cached_ratings()
-    if players is None:
-        players = fetch_fide_ratings(fide_ids)
+    fide_ids = ['1940376', '1984349', '1984357']  # Temporary FIDE IDs for testing
+    players = [get_fide_rating(fide_id) for fide_id in fide_ids]
 
     # Check if players data was fetched
     if not players or all(player.get('standard') == "Unrated" for player in players):
         logging.warning("No player data found or fetched.")
         return "<p>No player data available.</p>"
 
-    # Sort players by Standard rating
-    sorted_players = sorted(players, key=lambda x: (x['standard'] == "Unrated", x['standard']), reverse=True)
-
-    # Create HTML table with Tabulate
-    table = tabulate(
-        [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in sorted_players],
-        headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
-        tablefmt="html"
+    # Create HTML table
+    table_rows = "".join(
+        f"<tr><td>{player['name']}</td><td>{player['fide_id']}</td><td>{player['standard']}</td><td>{player['rapid']}</td><td>{player['blitz']}</td></tr>"
+        for player in players
     )
 
-    # Create the full HTML page
     html_content = f"""
     <html>
     <head>
@@ -141,12 +91,21 @@ def show_ratings():
     </head>
     <body>
         <h1>FIDE Ratings</h1>
-        {table}
+        <table>
+            <tr>
+                <th>Player</th>
+                <th>FIDE ID</th>
+                <th>Standard</th>
+                <th>Rapid</th>
+                <th>Blitz</th>
+            </tr>
+            {table_rows}
+        </table>
     </body>
     </html>
     """
-    
+
     return render_template_string(html_content)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=5000)  # Use a fixed port for testing
