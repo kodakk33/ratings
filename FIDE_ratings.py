@@ -1,3 +1,4 @@
+# Import necessary modules
 from flask import Flask, render_template_string
 import requests
 from bs4 import BeautifulSoup
@@ -6,66 +7,50 @@ import json
 import os
 import logging
 
+# Initialize Flask app
 app = Flask(__name__)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-CACHE_FILE = 'fide_ratings_cache.json'  # Define the cache file name
+# Define cache file
+CACHE_FILE = 'fide_ratings_cache.json'
 
+# Function to get cached ratings
 def get_cached_ratings():
-    """
-    Check if the cache file exists and read the ratings from it.
-    Returns:
-        list: Cached ratings data if it exists, None otherwise.
-    """
-    if os.path.exists(CACHE_FILE):  # Check if the cache file exists
+    if os.path.exists(CACHE_FILE):
         try:
-            with open(CACHE_FILE, 'r') as f:  # Open the cache file for reading
-                return json.load(f)  # Load and return the JSON data from the file
+            with open(CACHE_FILE, 'r') as f:
+                return json.load(f)
         except json.JSONDecodeError:
             logging.error(f"Cache file {CACHE_FILE} is corrupted or empty. Re-fetching data.")
-            return None  # Return None to trigger a data fetch
+            return None
         except IOError as e:
             logging.error(f"Failed to read cache file {CACHE_FILE}: {e}")
             return None
-    else:
-        logging.info(f"No cache file found. A new one will be created.")
-        return None  # No cache found
+    return None
 
+# Function to cache ratings
 def cache_ratings(ratings):
-    """
-    Write the ratings data to the cache file.
-    Args:
-        ratings (list): List of ratings data to cache.
-    """
     try:
-        with open(CACHE_FILE, 'w') as f:  # Open the cache file for writing
-            json.dump(ratings, f)  # Convert the ratings list to JSON and write it to the file
+        with open(CACHE_FILE, 'w') as f:
+            json.dump(ratings, f)
         logging.info(f"Cache written successfully to {CACHE_FILE}")
     except IOError as e:
         logging.error(f"Failed to write cache to {CACHE_FILE}: {e}")
 
-def fetch_fide_ratings(fide_ids):
-    """
-    Fetch FIDE ratings for a list of FIDE IDs and cache the results.
-    Args:
-        fide_ids (list): List of FIDE IDs to fetch ratings for.
-    Returns:
-        list: List of ratings data.
-    """
-    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]  # Get ratings for each FIDE ID
-    cache_ratings(ratings)  # Cache the fetched ratings
-    return ratings  # Return the fetched ratings
-
 # Function to fetch player ratings from FIDE website
 def get_fide_rating(fide_id):
     url = f"https://ratings.fide.com/profile/{fide_id}"
+    logging.info(f"Fetching data for FIDE ID: {fide_id} from URL: {url}")
     try:
         response = requests.get(url)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Log response status
+        logging.info(f"Received response from FIDE for {fide_id}: {response.status_code}")
 
         # Extract player name
         name_tag = soup.find('div', class_='profile-top-title')
@@ -93,6 +78,7 @@ def get_fide_rating(fide_id):
                 elif rating_type == "blitz":
                     blitz_rating = rating_value
 
+        logging.info(f"Fetched ratings for {fide_id}: {name}, Std: {standard_rating}, Rapid: {rapid_rating}, Blitz: {blitz_rating}")
         return {"name": name, "fide_id": fide_id, "standard": standard_rating, "rapid": rapid_rating, "blitz": blitz_rating}
 
     except requests.exceptions.HTTPError as http_err:
@@ -102,7 +88,13 @@ def get_fide_rating(fide_id):
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}
 
-# Function to read FIDE IDs from file
+# Function to fetch FIDE ratings and cache results
+def fetch_fide_ratings(fide_ids):
+    ratings = [get_fide_rating(fide_id) for fide_id in fide_ids]
+    cache_ratings(ratings)
+    return ratings
+
+# Function to read FIDE IDs from a file
 def read_fide_ids_from_file(file_path):
     try:
         with open(file_path, 'r') as file:
@@ -117,15 +109,15 @@ def read_fide_ids_from_file(file_path):
         logging.error(f"An error occurred while reading the file: {err}")
         return []
 
-# Flask route to display the ratings
+# Route to display FIDE ratings
 @app.route('/')
 def show_ratings():
-    file_path = 'ratings.txt'  # Path to the file with FIDE IDs
+    file_path = 'ratings.txt'  # File containing FIDE IDs
     fide_ids = read_fide_ids_from_file(file_path)  # Read FIDE IDs from the file
 
-    # Try to get ratings from the cache first
-    players = get_cached_ratings()  # Attempt to retrieve cached ratings
-    if players is None:  # If no cached ratings are found, fetch new ratings and cache them
+    # Check for cached ratings
+    players = get_cached_ratings()
+    if players is None:
         players = fetch_fide_ratings(fide_ids)
 
     # Sort players by Standard rating
@@ -138,7 +130,10 @@ def show_ratings():
         tablefmt="html"
     )
 
-    # Create the full HTML page
+    # Log generated table
+    logging.info(f"Generated Table: {table}")
+
+    # Create full HTML page
     html_content = f"""
     <html>
     <head>
@@ -149,16 +144,14 @@ def show_ratings():
             th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
             th {{ background-color: #f2f2f2; }}
         </style>
-    </head>
+        </head>
     <body>
         <h1>FIDE Ratings</h1>
         {table}
     </body>
     </html>
     """
-    
-    logging.info(f"Generated Table: {table}")
     return render_template_string(html_content)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))  # Set debug
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))  # Run app
