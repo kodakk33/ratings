@@ -13,7 +13,7 @@ def get_fide_rating(fide_id):
     """Fetch player ratings from the FIDE website."""
     url = f"https://ratings.fide.com/profile/{fide_id}"
     logging.info(f"Fetching data for FIDE ID: {fide_id} from URL: {url}")
-
+    
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for HTTP errors
@@ -28,18 +28,19 @@ def get_fide_rating(fide_id):
         # Extract FIDE ratings
         ratings_section = soup.find('div', class_='profile-top-rating-dataCont')
         logging.info(f"Ratings section found for {fide_id}: {ratings_section}")  # Debugging line
-        standard_rating, rapid_rating, blitz_rating = 0, 0, 0  # Change Unrated to 0
+        standard_rating, rapid_rating, blitz_rating = 0, 0, 0  # Set default values to 0
 
         if ratings_section:
             rating_entries = ratings_section.find_all('div', class_='profile-top-rating-data')
             for entry in rating_entries:
                 rating_type = entry.find('span', class_='profile-top-rating-dataDesc').text.strip()
-                rating_text = entry.text.strip().split()[-1]  # Get the last part (the number)
+                rating_text = entry.text.strip().split()[-1]  # Get the last part (the text)
 
                 # Debugging line to see what is being processed
                 logging.info(f"Processing {rating_type} rating for {fide_id}: {rating_text}")
 
-                if "Not rated" in rating_text:  # Check for the 'Not rated' label
+                # Adjust this condition to handle "Not rated"
+                if "Not rated" in rating_text or "rated" in rating_text:  
                     rating_value = 0  # Set unrated players' ratings to 0
                 else:
                     try:
@@ -50,11 +51,11 @@ def get_fide_rating(fide_id):
                         rating_value = 0  # Set to 0 if it's not a valid number
 
                 # Assign ratings based on the type
-                if rating_type == "std":
+                if "std" in rating_type:  # Adjusted condition
                     standard_rating = rating_value
-                elif rating_type == "rapid":
+                elif "rapid" in rating_type:  # Adjusted condition
                     rapid_rating = rating_value
-                elif rating_type == "blitz":
+                elif "blitz" in rating_type:  # Adjusted condition
                     blitz_rating = rating_value
 
         logging.info(f"Fetched ratings for {fide_id}: {name}, Std: {standard_rating}, Rapid: {rapid_rating}, Blitz: {blitz_rating}")
@@ -66,6 +67,7 @@ def get_fide_rating(fide_id):
         logging.error(f"An unexpected error occurred for ID {fide_id}: {err}")
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}  # Return 0 for unrated
+
 
 def read_fide_ids_from_file(file_path):
     """Read FIDE IDs from a specified file."""
