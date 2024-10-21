@@ -92,7 +92,7 @@ def show_ratings():
 
     logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
 
-    players = fetch_fide_ratings(fide_ids)  # Fetch ratings directly
+    players = fetch_fide_ratings(fide_ids)  # Fetch new ratings
 
     # Check if players data was fetched
     if not players or all(player.get('standard') == 0 for player in players):
@@ -119,15 +119,17 @@ def show_ratings():
             table {{ border-collapse: collapse; width: 100%; }}
             th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
             th {{ background-color: #f2f2f2; }}
+            img {{ display: block; margin: 20px auto; max-width: 80%; height: auto; }}  /* Responsive image styling */
         </style>
     </head>
     <body>
         <h1>FIDE Ratings</h1>
         {table}
+        <img src="https://tse1.mm.bing.net/th?id=OIP.M-tpqp1vhciWWHzgooe-NQAAAA&pid=Api&P=0&h=220" alt="Descriptive Alt Text">
     </body>
     </html>
     """
-    
+
     return render_template_string(html_content)
 
 if __name__ == "__main__":
