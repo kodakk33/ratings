@@ -31,7 +31,7 @@ def get_fide_rating(fide_id):
     logging.info(f"Fetching data for FIDE ID: {fide_id} from URL: {url}")
     
     try:
-        response = requests.get(url)
+        response = requests.get(url,timeout=600)
         response.raise_for_status()  # Raise an error for HTTP errors
         logging.info(f"Received response for {fide_id}: {response.status_code}")
 
