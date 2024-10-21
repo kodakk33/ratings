@@ -50,12 +50,13 @@ def get_fide_rating(fide_id):
             rating_entries = ratings_section.find_all('div', class_='profile-top-rating-data')
             for entry in rating_entries:
                 rating_type = entry.find('span', class_='profile-top-rating-dataDesc').text.strip()
-                rating_text = entry.text.strip().split()[-1]  # Get the last part (the number)
+                rating_text = entry.text.strip().split()[-1]  # Get the last part (the text)
 
                 # Debugging line to see what is being processed
                 logging.info(f"Processing {rating_type} rating for {fide_id}: {rating_text}")
 
-                if "Unrated" in rating_text:  # Check for the 'Unrated' label
+                # Adjust this condition to handle "Not rated"
+                if "Not rated" in rating_text or "rated" in rating_text:  
                     rating_value = 0  # Set unrated players' ratings to 0
                 else:
                     try:
@@ -66,11 +67,11 @@ def get_fide_rating(fide_id):
                         rating_value = 0  # Set to 0 if it's not a valid number
 
                 # Assign ratings based on the type
-                if "Standard" in rating_type:
+                if "std" in rating_type:  # Adjusted condition
                     standard_rating = rating_value
-                elif "Rapid" in rating_type:
+                elif "rapid" in rating_type:  # Adjusted condition
                     rapid_rating = rating_value
-                elif "Blitz" in rating_type:
+                elif "blitz" in rating_type:  # Adjusted condition
                     blitz_rating = rating_value
 
         logging.info(f"Fetched ratings for {fide_id}: {name}, Std: {standard_rating}, Rapid: {rapid_rating}, Blitz: {blitz_rating}")
