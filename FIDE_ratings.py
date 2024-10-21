@@ -2,12 +2,28 @@ from flask import Flask, render_template_string
 import requests
 from bs4 import BeautifulSoup
 import logging
-from tabulate import tabulate  # Ensure you have this library installed
+from tabulate import tabulate
 
 app = Flask(__name__)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
+
+def read_fide_ids_from_file(file_path):
+    """Read FIDE IDs from a text file, supporting space-separated values."""
+    with open(file_path, 'r') as file:
+        # Read the first line and split by spaces
+        line = file.readline().strip()
+        return line.split()  # Split the line into separate IDs
+
+def fetch_fide_ratings(fide_ids):
+    """Fetch ratings for multiple FIDE IDs."""
+    players = []
+    for fide_id in fide_ids:
+        player_data = get_fide_rating(fide_id)
+        if player_data:
+            players.append(player_data)
+    return players
 
 def get_fide_rating(fide_id):
     """Fetch player ratings from the FIDE website."""
@@ -68,13 +84,6 @@ def get_fide_rating(fide_id):
 
     return {"name": f"Player ID {fide_id}", "fide_id": fide_id, "standard": 0, "rapid": 0, "blitz": 0}  # Return 0 for unrated
 
-
-def read_fide_ids_from_file(file_path):
-    """Read FIDE IDs from a specified file."""
-    with open(file_path, 'r') as file:
-        fide_ids = file.read().strip().splitlines()  # Read each line as a FIDE ID
-    return fide_ids
-
 @app.route('/')
 def show_ratings():
     """Flask route to display the ratings."""
@@ -83,19 +92,19 @@ def show_ratings():
 
     logging.info(f"Loaded FIDE IDs from file: {fide_ids}")
 
-    players = []  # Initialize empty list for players
-    for fide_id in fide_ids:
-        player_data = get_fide_rating(fide_id)
-        players.append(player_data)
+    players = fetch_fide_ratings(fide_ids)  # Fetch ratings directly
 
     # Check if players data was fetched
     if not players or all(player.get('standard') == 0 for player in players):
         logging.warning("No player data found or fetched.")
         return "<p>No player data available.</p>"
 
+    # Sort players by Standard rating
+    sorted_players = sorted(players, key=lambda x: (x['standard'] == 0, x['standard']), reverse=True)
+
     # Create HTML table with Tabulate
     table = tabulate(
-        [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in players],
+        [[player['name'], player['fide_id'], player['standard'], player['rapid'], player['blitz']] for player in sorted_players],
         headers=["Player", "FIDE ID", "Standard", "Rapid", "Blitz"],
         tablefmt="html"
     )
