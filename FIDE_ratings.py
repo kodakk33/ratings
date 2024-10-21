@@ -10,9 +10,11 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 def read_fide_ids_from_file(file_path):
-    """Read FIDE IDs from a text file."""
+    """Read FIDE IDs from a text file, supporting space-separated values."""
     with open(file_path, 'r') as file:
-        return [line.strip() for line in file if line.strip()]  # Read each line
+        # Read the first line and split by spaces
+        line = file.readline().strip()
+        return line.split()  # Split the line into separate IDs
 
 def fetch_fide_ratings(fide_ids):
     """Fetch ratings for multiple FIDE IDs."""
