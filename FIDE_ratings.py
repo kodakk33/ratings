@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 def read_fide_ids_from_file(file_path):
     """Read FIDE IDs from a text file."""
     with open(file_path, 'r') as file:
-        return [line.strip() for line in file if line.strip()]
+        return [line.strip() for line in file if line.strip()]  # Read each line
 
 def fetch_fide_ratings(fide_ids):
     """Fetch ratings for multiple FIDE IDs."""
