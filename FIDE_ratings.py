@@ -1,10 +1,14 @@
 from flask import Flask, render_template_string
+from flask_caching import Cache
 import requests
 from bs4 import BeautifulSoup
 import logging
 from tabulate import tabulate
 
 app = Flask(__name__)
+
+# Configure cache (you can adjust the type of cache if needed)
+cache = Cache(app, config={'CACHE_TYPE': 'simple'})  # Simple in-memory cache
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -25,13 +29,14 @@ def fetch_fide_ratings(fide_ids):
             players.append(player_data)
     return players
 
+@cache.memoize(timeout=3600)  # Cache the result for 1 hour
 def get_fide_rating(fide_id):
     """Fetch player ratings from the FIDE website."""
     url = f"https://ratings.fide.com/profile/{fide_id}"
     logging.info(f"Fetching data for FIDE ID: {fide_id} from URL: {url}")
     
     try:
-        response = requests.get(url,timeout=600)
+        response = requests.get(url)
         response.raise_for_status()  # Raise an error for HTTP errors
         logging.info(f"Received response for {fide_id}: {response.status_code}")
 
